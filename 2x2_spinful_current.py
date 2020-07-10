@@ -10,6 +10,7 @@ import qmeq
 import random
 from sympy import *
 import time
+import pandas as pd
 
 # Quantum dot parameters
 
@@ -124,7 +125,7 @@ Ev4=-V0*(1/a+1/a+1/b)
 
 
 omegapres, omegaflip = 0.2, 0.0
-vgateup, vgatedown, vbiasL, vbiasR = 0.0, 0.0, 5.0, 0.0
+vgateup, vgatedown, vbiasL, vbiasR = 0.0, 0.0, 3.0, -3.0
 
 
 Je = 0.00
@@ -142,7 +143,7 @@ Eq4 = 3.0
 temp = 0.5
 dband = 1200
 # Tunneling amplitudes
-gam = 0.005
+gam = 0.002
 t0 = np.sqrt(gam/(2*np.pi))
 t00 = 0.0*t0
 
@@ -350,15 +351,15 @@ def stab_calc(system, bfield, vlst, vglst, dV=0.0001):
             (6,6): Eq4+Ev4+mu4.subs([(vL, vbiasL),(vR, vbiasR),(vGU, vgateup),(vGD, vgatedown)]),
             (7,7): Eq4+Ev4+mu4.subs([(vL, vbiasL),(vR, vbiasR),(vGU, vgateup),(vGD, vgatedown)]),
             (0,2): -omegapres,
-            (0,4): -omegapres/10,
+            (0,4): -omegapres/3,
             (0,6): -omegapres,
             (1,3): -omegapres,
-            (1,5): -omegapres/10,
+            (1,5): -omegapres/3,
             (1,7): -omegapres,
             (2,4): -omegapres,
-            (2,6): -omegapres/10,
+            (2,6): -omegapres/3,
             (3,5): -omegapres,
-            (3,7): -omegapres/10,
+            (3,7): -omegapres/3,
             (4,6): -omegapres,
             (5,7): -omegapres})
 
@@ -445,10 +446,17 @@ def stab_calc(system, bfield, vlst, vglst, dV=0.0001):
 
 system.kerntype = 'Pauli'
 vpnt, vgpnt = 51, 51
-vlst = np.linspace(-200, 600, vpnt)
-vglst = np.linspace(-200, 600, vgpnt)
+vlst = np.linspace(-400, 1000, vpnt)
+vglst = np.linspace(-400, 1000, vgpnt)
 start_time = time.time()
 stab, stab_cond = stab_calc(system, 0, vlst, vglst)
+
+name = "./images/2x2_spinful_Bias=" + str(vbiasL) + "meV_tc=" + str(omegapres) + "meV"
+figname = name + ".png"
+dataname = name + ".csv"
+
+final = pd.DataFrame(stab, index=vlst, columns=vglst)
+final.to_csv(dataname)
 
 
 # The stability diagram has been produced. Let's see how it looks like:
@@ -466,6 +474,6 @@ def stab_plot(stab, stab_cond, vlst, vglst, gam):
     cbar1.set_label('Current [unit]', fontsize=20)
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(figname)
 
 stab_plot(stab, stab_cond, vlst, vglst, gam)
