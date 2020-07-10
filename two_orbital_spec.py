@@ -4,19 +4,21 @@ from __future__ import division, print_function
 #get_ipython().magic(u'matplotlib inline')
 import matplotlib.pyplot as plt
 import numpy as np
-
+import time
 
 import qmeq
-
+import random
+import pandas as pd
 
 # Quantum dot parameters
 vgate = 0.0
 bfield = 0.0
 omega = 0.0
+vbias = 20
 
-cL1,cG1,cm = 1.6, 0.4, 0.2
-cL2,c12,c21,cG2 = 0.5, 0.2, 0.2, 0.4
-cR2,cR1 = 1.6, 0.5
+cL1,cG1,cm = 1.6, 0.6, 1.0
+cL2,c12,c21,cG2 = 0.3, 0.2, 0.2, 0.5
+cR2,cR1 = 1.6, 0.3
 
 q10 = 0.0 
 q20 = 0.0
@@ -40,35 +42,61 @@ q2 = (c21*vgate1 + cG2*vgate2 + cL2*vbiasL + cR2*vbiasR)*6.24/1000 + q10
 mu1 = Um*q2 + U1*q1 - U1/2
 mu2 = Um*q1 + U2*q2 - U2/2
 
-omegapres, omegaflip = 1.8, 0.00*U1
+omegapres, omegaflip = 0.01*U1, 0.00*U1
+
+Jev = 0.01 * random.random()
+Jt1v = 0.01 * random.random()
+Jt2v = 0.01 * random.random()
 
 Je = 0.00*U1
 Jp = 0.00*U1
 Jt1 = 0.00*U1
 Jt2 = 0.00*U1
 
+print(Je)
+print(Jt1)
+print(Jt2)
+
 Eq1 = 0.0 * U1
 Eq2 = 0.0 * U1
+Eq1h = 0.0 * U1
+Eq2h = 0.0 * U1
+
 
 # Lead parameters
-temp = 0.7
+temp = 0.5
 dband = 2000
 # Tunneling amplitudes
 gam = 0.002
 t0 = np.sqrt(gam/(2*np.pi))
 t00 = 0.0*t0
 
+offset0 = 0
+offset1 = 1
+offset2 = 0.5
+offset3 = 1.5
+offset4 = 2
+offset5 = 3
+offset6 = 2.5
+offset7 = 3.5
 
 
 
-nsingle = 4
+
+nsingle = 8
 
 hsingle =  {(0,0): Eq1-mu1+bfield/2,
             (1,1): Eq1-mu1-bfield/2,
             (2,2): Eq2-mu2+bfield/2,
             (3,3): Eq2-mu2-bfield/2,
+            (4,4): Eq1-mu1 + offset1,
+            (5,5): Eq1-mu1 + offset1,
+            (6,6): Eq2-mu2 + offset2,
+            (7,7): Eq2-mu2 + offset2,
             (0,2): -omegapres,
             (1,3): -omegapres,
+            (0,5): -omegapres,
+            (2,4): -omegapres,
             (0,3): -omegaflip,
             (1,2): -omegaflip
 }
@@ -76,26 +104,48 @@ hsingle =  {(0,0): Eq1-mu1+bfield/2,
 # 0 is up, 1 is down
 
 
-
+"""
 coulomb = {(0,1,1,0):U1,
           (1,2,2,1):Um,
-          (0,2,2,0):Um-Je,
-          (1,3,3,1):Um-Je,
+          (0,2,2,0):Um,
+          (1,3,3,1):Um,
           (0,3,3,0):Um,
+          (2,3,3,2):U2}
+"""
+
+coulomb = {(0,1,1,0):U1,
+          (0,4,4,0):U1,
+          (0,5,5,0):U1,
+          (1,4,4,1):U1,
+          (1,5,5,1):U1,
+          (4,5,5,4):U1,
           (2,3,3,2):U2,
-          (1,2,3,0):-Je,
-          (0,3,2,1):-Je,
-          (2,3,0,1):-Jp,
-          (0,1,2,3):-Jp,
-          (0,1,3,0):-Jt1,
-          (0,1,1,2):-Jt1,
-          (1,2,2,3):-Jt2,
-          (1,3,3,2):-Jt2,
-          (0,3,1,0):-Jt1,
-          (1,2,0,1):-Jt2,
-          (2,3,0,3):-Jt2}
+          (2,6,6,2):U2,
+          (2,7,7,2):U2,
+          (3,6,6,3):U2,
+          (3,7,7,3):U2,
+          (6,7,7,6):U2,
+          (1,2,2,1):Um,
+          (0,2,2,0):Um,
+          (4,2,2,4):Um,
+          (5,2,2,5):Um,
+          (1,3,3,1):Um,
+          (0,3,3,0):Um,
+          (4,3,3,4):Um,
+          (5,3,3,5):Um,
+          (1,6,6,1):Um,
+          (0,6,6,0):Um,
+          (4,6,6,4):Um,
+          (5,6,6,5):Um,
+          (1,7,7,1):Um,
+          (0,7,7,0):Um,
+          (4,7,7,4):Um,
+          (5,7,7,5):Um
+}
 
 
+
+nleads = 12
 
 tleads = {(0, 0):-t0, # L, up   <-- up
           (1, 0):-t00, # R, up   <-- up
@@ -104,26 +154,42 @@ tleads = {(0, 0):-t0, # L, up   <-- up
           (4, 2):-t00,
           (5, 2):-t0,
           (6, 3):-t00,
-          (7, 3):-t0} # R, down <-- down
+          (7, 3):-t0,
+          (8, 4):-t0,
+          (9, 4):-t00,
+          (8, 5): -t0,
+          (9, 5): -t00,
+          (10, 6): -t00,
+          (11, 6): -t0,
+          (10, 7): -t00,
+          (11, 7): -t0} # R, down <-- down
                      # lead label, lead spin <-- level spin
 
 
 
-nleads = 8
+
+
+vbiasL = vbias/2
+vblasR = -vbias/2
 
 #        L,up        R,up         L,down      R,down
 mulst = {0: -vbiasL, 1: -vbiasR, 2: -vbiasL, 3: -vbiasR,
-          4: -vbiasL, 5: -vbiasR, 6: -vbiasL, 7: -vbiasR}
+          4: -vbiasL, 5: -vbiasR, 6: -vbiasL, 7: -vbiasR,
+          8: -vbiasL, 9: -vbiasR, 10: -vbiasL, 11: -vbiasR}
 tlst =  {0: temp,    1: temp,     2: temp,    3: temp,
-          4: temp,  5: temp,  6: temp,  7: temp}
+          4: temp,  5: temp,  6: temp,  7: temp,
+          8: temp,  9: temp,  10: temp,  11: temp}
 
 
 
 system = qmeq.Builder(nsingle, hsingle, coulomb,
                       nleads, tleads, mulst, tlst, dband,
-                      kerntype='Lindblad')
+                      kerntype='Pauli')
+system.solve(masterq=False)
 
+system.solve(qdq=False)
 
+print(system.current[0] + system.current[2] + system.current[4] + system.current[6])
 # Here we have chosen to use **Pauli master equation** (*kerntype='Pauli'*) to describe the stationary state. Let's calculate the current through the system:
 
 # In[11]:
@@ -154,14 +220,12 @@ def stab_calc(system, bfield, vlst, vglst, dV=0.0001):
     print(vpnt)
     for j1 in range(vgpnt):
         vgate1 = vglst[j1]
-        vgate2 = vglst[j1]
         print(j1)
         #print(vgate1)
         #print(vgate2)
 
         for j2 in range(vpnt):
-            vbiasL = vlst[j2]/2
-            vbiasR = -vlst[j2]/2
+            vgate2 = vlst[j2]
             q1 = (c12*vgate2 + cG1*vgate1 + cL1*vbiasL + cR1*vbiasR)*6.24/1000 + q10
             q2 = (c21*vgate1 + cG2*vgate2 + cL2*vbiasL + cR2*vbiasR)*6.24/1000 + q20
 
@@ -170,23 +234,34 @@ def stab_calc(system, bfield, vlst, vglst, dV=0.0001):
 
             mu1 = Um*q2 + U1*q1 - U1/2
             mu2 = Um*q1 + U2*q2 - U2/2
+            gg = 0.1
 
-            system.change(hsingle={(0,0): Eq1-mu1+bfield/2,
-            (1,1): Eq1-mu1-bfield/2,
-            (2,2): Eq2-mu2+bfield/2,
-            (3,3): Eq2-mu2-bfield/2,
-            (0,2): -omegapres,
-            (1,3): -omegapres,
+
+            system.change(hsingle={(0,0): Eq1-mu1+offset0,
+            (1,1): Eq1-mu1+offset1,
+            (2,2): Eq2-mu2+offset2,
+            (3,3): Eq2-mu2+offset3,
+            (4,4): Eq1-mu1 + offset4,
+            (5,5): Eq1-mu1 + offset5,
+            (6,6): Eq2-mu2 + offset6,
+            (7,7): Eq2-mu2 + offset7,
+            (0,2): -gg,
+            (1,3): -gg,
+            (0,6): -gg,
+            (1,7): -gg,
+            (2,4): -gg,
+            (3,5): -gg,
+            (4,6): -gg,
+            (5,7): -gg,
             (0,3): -omegaflip,
             (1,2): -omegaflip})
             system.solve(masterq=False)
-            system.change(mulst={0: vlst[j2]/2, 1: -vlst[j2]/2,
-                                 2: vlst[j2]/2, 3: -vlst[j2]/2,
-                                 4: vlst[j2]/2, 5: -vlst[j2]/2,
-                                 6: vlst[j2]/2, 7: -vlst[j2]/2})
+
             system.solve(qdq=False)
-            stab[j1, j2] = system.current[0] + system.current[2] + system.current[4] + system.current[6]
+            stab[j1, j2] = system.current[0] + system.current[2] + system.current[4] + system.current[6] + system.current[8] + system.current[10]
             stab[j1, j2] = abs(stab[j1, j2])
+            #0.000000001 good
+            #stab[j1, j2] = np.log(stab[j1, j2])
             #stab[j1,j2] = mu1-mu2
             #
             #system.add(mulst={0: dV/2, 1: -dV/2,
@@ -199,14 +274,19 @@ def stab_calc(system, bfield, vlst, vglst, dV=0.0001):
 # We changed the single particle Hamiltonian by calling the function **system.change** and specifying which matrix elements to change. The function **system.add** adds a value to a specified parameter. Also the option *masterq=False* in **system.solve** indicates just to diagonalise the quantum dot Hamiltonian and the master equation is not solved. Similarly, the option *qdq=False* means that the quantum dot Hamiltonian is not diagonalized (it was already diagonalized previously) and just master equation is solved.
 
 # In[19]:
-
+start_time = time.time()
 system.kerntype = 'Pauli'
 vpnt, vgpnt = 201, 201
-vlst = np.linspace(-50, 50, vpnt)
-vglst = np.linspace(0, 600, vgpnt)
+vlst = np.linspace(-200, 600, vpnt)
+vglst = np.linspace(-200, 600, vgpnt)
 stab, stab_cond = stab_calc(system, bfield, vlst, vglst)
 
+name = "./images/2x2_spinful_spec_Bias=" + str(vbiasL) + "meV_tc=" + str(omegapres) + "meV"
+figname = name + ".png"
+dataname = name + ".csv"
 
+final = pd.DataFrame(stab, index=vlst, columns=vglst)
+final.to_csv(dataname)
 # The stability diagram has been produced. Let's see how it looks like:
 
 # In[20]:
@@ -216,11 +296,11 @@ def stab_plot(stab, stab_cond, vlst, vglst, gam):
     fig = plt.figure(figsize=(8,6))
     #
     p1 = plt.subplot(1, 1, 1)
-    p1.set_xlabel('$V_{g}(mV)$', fontsize=20)
-    p1.set_ylabel('$V(mV)$', fontsize=20)
-    p1_im = plt.imshow(stab.T/gam, extent=[xmin, xmax, ymin, ymax], aspect='auto', origin='lower', cmap = plt.get_cmap('Spectral'))
+    p1.set_xlabel('$V_{g1}(mV)$', fontsize=20)
+    p1.set_ylabel('$V_{g2}(mV)$', fontsize=20)
+    p1_im = plt.imshow(stab.T, extent=[xmin, xmax, ymin, ymax], aspect='auto', origin='lower', cmap = plt.get_cmap('Spectral'))
     cbar1 = plt.colorbar(p1_im)
-    cbar1.set_label('Current [$\Gamma$]', fontsize=20)
+    cbar1.set_label('Current [unit]', fontsize=20)
     #
     #p2 = plt.subplot(1, 2, 2)
     #p2.set_xlabel('$V_{g}/U$', fontsize=20);
@@ -232,4 +312,5 @@ def stab_plot(stab, stab_cond, vlst, vglst, gam):
     plt.tight_layout()
     plt.show()
 
+print("--- %s seconds ---" % (time.time() - start_time))
 stab_plot(stab, stab_cond, vlst, vglst, gam)
